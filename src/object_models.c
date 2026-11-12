@@ -1,4 +1,7 @@
 #include "object_models.h"
+#ifdef TARGET_S30
+#include "s30_swap.h"
+#endif
 #include "asset_enums.h"
 #include "asset_loading.h"
 #include "common.h"
@@ -142,6 +145,9 @@ ModelInstance *object_model_init(s32 modelID, s32 flags) {
     compressedData = (u32) ((u8 *) objMdl + modelSize) - sp48;
     asset_load(ASSET_OBJECT_MODELS, compressedData, temp_s0, sp48);
     gzip_inflate((u8 *) compressedData, (u8 *) objMdl);
+#ifdef TARGET_S30
+    s30_swap_object_model(objMdl);
+#endif
     objMdl->textures = (TextureInfo *) ((s32) objMdl->textures + (u8 *) objMdl);
     objMdl->vertices = (Vertex *) ((s32) objMdl->vertices + (u8 *) objMdl);
     objMdl->triangles = (Triangle *) ((s32) objMdl->triangles + (u8 *) objMdl);
@@ -938,6 +944,9 @@ s32 model_anim_init(ObjectModel *model, s32 modelID) {
         animAddress = (u32) (model->animations[i].animData + size) - assetSize;
         asset_load(ASSET_OBJECT_ANIMATIONS, animAddress, assetOffset, assetSize);
         gzip_inflate((u8 *) animAddress, (u8 *) model->animations[i].anim);
+#ifdef TARGET_S30
+        s30_swap32(model->animations[i].anim, 1); // the length; the keyframes are read a byte at a time
+#endif
         temp = model->animations[i].anim;
         model->animations[i].animLength = *temp;
         model->animations[i].anim++;

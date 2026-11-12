@@ -22,7 +22,7 @@ OSThread gThread3; // OSThread for thread 3
  */
 void mainproc(void) {
     osInitialize();
-#ifdef AVOID_UB
+#if defined(AVOID_UB) && !defined(TARGET_S30)
     bzero(&gMainMemoryPool, RAM_END - (s32) (&main_BSS_START));
 #endif
     osCreateThread(&gThread1, 1, &thread1_main, 0, &gThread1Stack[STACKSIZE(STACK_IDLE)], OS_PRIORITY_IDLE);
@@ -41,6 +41,9 @@ void thread1_main(UNUSED void *unused) {
     gThread3Stack[0] = 0;
     osStartThread(&gThread3);
     osSetThreadPri(NULL, OS_PRIORITY_IDLE);
+#ifdef TARGET_S30
+    osStopThread(NULL); // the N64 idles here; the S30 has nothing to spin for
+#endif
     while (1) {}
 }
 

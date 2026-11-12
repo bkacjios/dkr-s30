@@ -1,4 +1,7 @@
 #include "objects.h"
+#ifdef TARGET_S30
+#include "s30_swap.h"
+#endif
 #include "memory.h"
 
 #include "asset_enums.h"
@@ -359,7 +362,7 @@ void racerfx_alloc(s32 numberOfVertices, s32 numberOfTriangles) {
     gBoostTriCount = numberOfTriangles;
     gNumOfBoostTris = 0;
     gBoostVertFlip = 0;
-    boostObj = (Object_Boost *) get_misc_asset(ASSET_MISC_20);
+    boostObj = (Object_Boost *) get_misc_asset_as(S30_MISC_BOOST, ASSET_MISC_20);
     // Makes 10 boost objects, but only 8 racers can actually exist at once.
     for (i = 0; i < NUMBER_OF_CHARACTERS; i++) {
         objEntry.common.objectID = ASSET_OBJECT_ID_BOOST;
@@ -420,7 +423,7 @@ void racerfx_free(void) {
         gBoostVerts[0] = NULL;
         gBoostVerts[1] = NULL;
     }
-    objBoost = (Object_Boost *) get_misc_asset(ASSET_MISC_20);
+    objBoost = (Object_Boost *) get_misc_asset_as(S30_MISC_BOOST, ASSET_MISC_20);
     for (i = 0; i < NUMBER_OF_CHARACTERS; i++) {
         sprite = objBoost[i].sprite;
         if (sprite != NULL) {
@@ -496,9 +499,9 @@ void func_8000B38C(Vertex *vertices, Triangle *triangles, ObjectTransform *trans
     tri = (s32 *) triangles;
     for (i = 0; i < 8; i++) {
         *tri++ = DKR_TRIANGLE(BACKFACE_CULL, 0, i + 1, ((i + 1) & 7) + 1);
-        *tri++ = ((width & 0xFFFF) << 16) | (height & 0xFFFF);
-        *tri++ = sp80[i];
-        *tri++ = sp80[(i + 1) & 7];
+        *tri++ = DKR_TEXCOORDS_WORD(((width & 0xFFFF) << 16) | (height & 0xFFFF));
+        *tri++ = DKR_TEXCOORDS_WORD(sp80[i]);
+        *tri++ = DKR_TEXCOORDS_WORD(sp80[(i + 1) & 7]);
     }
 }
 
@@ -520,7 +523,7 @@ void func_8000B750(Object *racerObj, s32 racerIndex, s32 vehicleIDPrev, s32 boos
         gBoostObjOverrideID = 0;
     }
     if (racerIndex >= 0 && racerIndex < NUMBER_OF_CHARACTERS) {
-        boostAsset = (Object_Boost *) get_misc_asset(ASSET_MISC_20);
+        boostAsset = (Object_Boost *) get_misc_asset_as(S30_MISC_BOOST, ASSET_MISC_20);
         objBoostType = &boostAsset[boostType];
         objBoostRacer = &boostAsset[racerIndex];
         if (gBoostEffectObjects[racerIndex] != NULL) {
@@ -605,7 +608,7 @@ void racerfx_update(s32 updateRate) {
     gBoostVertFlip = 1 - gBoostVertFlip;
     gNumOfBoostVerts = 0;
     gNumOfBoostTris = 0;
-    asset20 = (Object_Boost *) get_misc_asset(ASSET_MISC_20);
+    asset20 = (Object_Boost *) get_misc_asset_as(S30_MISC_BOOST, ASSET_MISC_20);
     gBoostObjOverrideID = 9;
     for (i = 0; i < NUMBER_OF_CHARACTERS; i++) {
         if (D_8011B068[i] && gBoostEffectObjects[i] != NULL) {
@@ -902,6 +905,9 @@ ObjectHeader *load_object_header(s32 index) {
     address = mempool_alloc_pool((MemoryPoolSlot *) gObjectMemoryPool, size);
     if (address != NULL) {
         asset_load(ASSET_OBJECTS, (u32) address, assetOffset, size);
+#ifdef TARGET_S30
+        s30_swap_object_header(address);
+#endif
         address->unk24 = (ObjectHeader24 *) ((uintptr_t) address + (uintptr_t) address->unk24);
         address->objectParticles =
             (ObjHeaderParticleEntry *) ((uintptr_t) address + (uintptr_t) address->objectParticles);
@@ -995,6 +1001,10 @@ void track_spawn_objects(s32 mapID, s32 index) {
             ((compressedAsset + gzip_size_uncompressed(ASSET_LEVEL_OBJECT_MAPS, assetOffset)) - (0, assetSize)) + 0x20;
         asset_load(ASSET_LEVEL_OBJECT_MAPS, (u32) compressedAsset, assetOffset, assetSize);
         gzip_inflate(compressedAsset, (u8 *) mem);
+#ifdef TARGET_S30
+        s30_swap32(mem, 1); // the size; the entries follow at 16
+        s30_swap_object_map((u8 *) mem + 16, *mem, gAssetsLvlObjTranslationTable, gAssetsObjectHeadersTable);
+#endif
         mempool_free(objMapTable);
         gObjectMapSpawnList[index] = (u8 *) (gObjectMap[index] + sizeof(uintptr_t));
         gObjectMapSize[index] = *mem;
@@ -3792,7 +3802,7 @@ void set_temp_model_transforms(Object *obj) {
                     var_f0 /= 2700.0f;
                     var_f0 += 1.0f;
                     obj->trans.scale *= var_f0;
-                    var_v1 *= ((f32 *) get_misc_asset(ASSET_MISC_4))[objRacer->characterId];
+                    var_v1 *= ((f32 *) get_misc_asset_as(S30_MISC_WORDS, ASSET_MISC_4))[objRacer->characterId];
                     // ASSET_MISC_4 is just 10 floats of 1.0f. One for each playable character.
                     if (var_v1 < -50) {
                         modelIndex = 5;
@@ -3939,7 +3949,7 @@ void func_800135B8(Object *boostObj) {
             boostData = &boost->flyingBoostData;
             break;
     }
-    asset = (Object_Boost *) get_misc_asset(ASSET_MISC_20);
+    asset = (Object_Boost *) get_misc_asset_as(S30_MISC_BOOST, ASSET_MISC_20);
     asset = &asset[D_8011B058[racerIndex]];
     object_do_player_tumble(boostObj->properties.boost.obj);
     mtx_cam_push(&gObjectCurrDisplayList, &gObjectCurrMatrix, &boostObj->properties.boost.obj->trans, 1.0f, 0.0f);
@@ -4039,7 +4049,7 @@ void render_racer_shield(Gfx **dList, Mtx **mtx, Vertex **vtxList, Object *obj) 
         if (vehicleID >= NUMBER_OF_PLAYER_VEHICLES) {
             vehicleID = VEHICLE_CAR;
         }
-        shield = (RacerShieldGfx *) get_misc_asset(ASSET_MISC_SHIELD_DATA);
+        shield = (RacerShieldGfx *) get_misc_asset_as(S30_MISC_SHIELD, ASSET_MISC_SHIELD_DATA);
         vehicleID = (vehicleID * 10) + racerIndex;
         shield = shield + vehicleID;
         gShieldEffectObject->trans.x_position = shield->x_position;
@@ -4105,7 +4115,7 @@ void render_racer_magnet(Gfx **dList, Mtx **mtx, Vertex **vtxList, Object *obj) 
             gObjectCurrDisplayList = *dList;
             gObjectCurrMatrix = *mtx;
             gObjectCurrVertexList = *vtxList;
-            magnet = (f32 *) get_misc_asset(ASSET_MISC_MAGNET_DATA);
+            magnet = (f32 *) get_misc_asset_as(S30_MISC_WORDS, ASSET_MISC_MAGNET_DATA);
             vehicleID = racer->vehicleID;
             if (vehicleID < VEHICLE_CAR || vehicleID >= NUMBER_OF_PLAYER_VEHICLES) {
                 vehicleID = VEHICLE_CAR;
@@ -6943,7 +6953,7 @@ u8 timetrial_init_staff_ghost(s32 trackId) {
     settings = get_settings();
     if (leveltable_vehicle_default(trackId) == (Vehicle) gPrevTimeTrialVehicle) {
         mainTrackIds = (s8 *) get_misc_asset(ASSET_MISC_MAIN_TRACKS_IDS);
-        staffTime = (u16 *) get_misc_asset(ASSET_MISC_GHOST_UNLOCK_TIMES);
+        staffTime = (u16 *) get_misc_asset_as(S30_MISC_HALVES, ASSET_MISC_GHOST_UNLOCK_TIMES);
         for (i = 0; mainTrackIds[i] != -1 && trackId != mainTrackIds[i]; i++) {}
         if (mainTrackIds[i] != -1) {
             if (staffTime[i] >= settings->courseTimesPtr[gPrevTimeTrialVehicle][trackId]) {

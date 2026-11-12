@@ -21,6 +21,7 @@ extern s32 gNumCollisionCandidates;
 
 // All handwritten assembly, below.
 
+
 #ifdef NON_MATCHING
 /**
  * Populates a list of triangle candidates that will be tested for collision in resolve_collisions.
@@ -123,7 +124,7 @@ void generate_collision_candidates(s32 numPoints, Vec3f *origins, Vec3f *targets
         LevelModelSegment *seg = segments[i];
 
         // Insert the segment pointer encoded with MSB = 0 to differentiate from collision facets
-        gCollisionCandidates[j] = (s32) K0_TO_PHYS(seg);
+        gCollisionCandidates[j] = CANDIDATE_SEGMENT(seg);
         j++;
 
         for (batchIndex = 0; batchIndex < seg->numberOfBatches; batchIndex++) {
@@ -312,8 +313,8 @@ s32 resolve_collisions(Vec3f *origin, Vec3f *target, f32 *radius, s8 *surface, s
             continueSearch = FALSE;
 
             for (i = 0; i < gNumCollisionCandidates; i++) {
-                if (gCollisionCandidates[i] >= 0) {
-                    collisionPlanes = ((LevelModelSegment *) (PHYS_TO_K0(gCollisionCandidates[i])))->collisionPlanes;
+                if (CANDIDATE_IS_SEGMENT(gCollisionCandidates[i])) {
+                    collisionPlanes = CANDIDATE_TO_SEGMENT(gCollisionCandidates[i])->collisionPlanes;
                 } else {
                     facet = (CollisionFacetPlanes *) gCollisionCandidates[i];
                     A = collisionPlanes[facet->basePlaneIndex * 4 + 0];
@@ -432,8 +433,8 @@ s32 resolve_collisions(Vec3f *origin, Vec3f *target, f32 *radius, s8 *surface, s
             continueSearch = FALSE;
 
             for (i = 0; i < gNumCollisionCandidates; i++) {
-                if (gCollisionCandidates[i] >= 0) {
-                    collisionPlanes = ((LevelModelSegment *) (PHYS_TO_K0(gCollisionCandidates[i])))->collisionPlanes;
+                if (CANDIDATE_IS_SEGMENT(gCollisionCandidates[i])) {
+                    collisionPlanes = CANDIDATE_TO_SEGMENT(gCollisionCandidates[i])->collisionPlanes;
                 } else {
                     facet = (CollisionFacetPlanes *) gCollisionCandidates[i];
                     A = collisionPlanes[facet->basePlaneIndex * 4 + 0];

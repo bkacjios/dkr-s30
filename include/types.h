@@ -7,7 +7,11 @@ typedef float MtxF[4][4];
 typedef s32 MtxS[4][4];
 typedef s16 VertexList;
 typedef u8 TriangleList;
+#ifdef TARGET_S30
+#include <stdint.h>
+#else
 typedef u32 uintptr_t;
+#endif
 
 #if defined(__sgi)
 #define stubbed_printf

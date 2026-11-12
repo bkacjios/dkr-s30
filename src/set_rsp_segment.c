@@ -10,5 +10,9 @@
  * Official name: segSetBase
  */
 void rsp_segment(Gfx **dList, s32 segment, s32 base) {
+#ifdef TARGET_S30
+    gSPSegment((*dList)++, segment, base) // the address as it is (n64/src/gfx.c)
+#else
     gSPSegment((*dList)++, segment, base + K0BASE)
+#endif
 }

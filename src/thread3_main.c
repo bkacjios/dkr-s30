@@ -1163,7 +1163,7 @@ void clear_lap_records(Settings *settings, s32 flags) {
     u16 *temp_v0;
 
     level_count(&numLevels, &numWorlds);
-    temp_v0 = (u16 *) get_misc_asset(ASSET_MISC_23);
+    temp_v0 = (u16 *) get_misc_asset_as(S30_MISC_HALVES, ASSET_MISC_23);
     for (i = 0; i < NUMBER_OF_SAVE_FILES; i++) {
         for (j = 0; j < numLevels; j++) {
             index = (j * 12) + (i * 4);

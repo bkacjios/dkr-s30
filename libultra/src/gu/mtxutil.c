@@ -12,6 +12,35 @@
 
 #include "guint.h"
 
+#ifdef TARGET_S30
+/* The S30: Mtx as 16-bit elements, each where its index puts it in native
+   byte order (integer halves, then fraction halves), as the game's own
+   matrix code and the renderer use it */
+void guMtxF2L(float mf[4][4], Mtx *m)
+{
+	short *ai = (short *) m;
+	unsigned short *af = (unsigned short *) m + 16;
+	int i, j;
+
+	for (i = 0; i < 4; i++)
+	for (j = 0; j < 4; j++) {
+		int e = FTOFIX32(mf[i][j]);
+		ai[i * 4 + j] = (short) (e >> 16);
+		af[i * 4 + j] = (unsigned short) e;
+	}
+}
+
+void guMtxL2F(float mf[4][4], Mtx *m)
+{
+	short *ai = (short *) m;
+	unsigned short *af = (unsigned short *) m + 16;
+	int i, j;
+
+	for (i = 0; i < 4; i++)
+	for (j = 0; j < 4; j++)
+		mf[i][j] = (int) (((unsigned int) (unsigned short) ai[i * 4 + j] << 16) | af[i * 4 + j]) / (float) 0x00010000;
+}
+#else
 void guMtxF2L(float mf[4][4], Mtx *m)
 {
 	int	i, j;
@@ -30,6 +59,7 @@ void guMtxF2L(float mf[4][4], Mtx *m)
 		*(af++) = ((e1 << 16) & 0xffff0000) | (e2 & 0xffff);
 	}
 }
+#endif
 
 void guMtxIdentF(float mf[4][4])
 {
@@ -50,6 +80,7 @@ void guMtxIdent(Mtx *m)
 	guMtxF2L(mf, m);
 }
 
+#ifndef TARGET_S30
 void guMtxL2F(float mf[4][4], Mtx *m)
 {
 	int		i, j;
@@ -71,3 +102,4 @@ void guMtxL2F(float mf[4][4], Mtx *m)
         mf[i][j*2+1] = q2 / (float)0x00010000;
 	}
 }
+#endif

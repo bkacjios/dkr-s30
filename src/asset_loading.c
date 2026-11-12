@@ -5,6 +5,9 @@
 #include "macros.h"
 #include "memory.h"
 #include "ultra64.h"
+#ifdef TARGET_S30
+#include "s30_swap.h"
+#endif
 
 /************ .bss ************/
 
@@ -48,6 +51,9 @@ void pi_init(void) {
     gAssetsLookupTable = (u32 *) mempool_alloc_safe(assetTableSize, COLOUR_TAG_GREY);
     mempool_locked_set((u8 *) gAssetsLookupTable);
     dmacopy_internal((u32) __ASSETS_LUT_START, (u32) gAssetsLookupTable, (s32) assetTableSize);
+#ifdef TARGET_S30
+    s30_swap32(gAssetsLookupTable, assetTableSize / 4);
+#endif
 }
 
 /**
@@ -78,6 +84,9 @@ u32 *asset_table_load(u32 assetIndex) {
     }
 
     dmacopy_internal((u32) (start + __ASSETS_LUT_END), (u32) out, size);
+#ifdef TARGET_S30
+    s30_swap_table(assetIndex - 1, out, size);
+#endif
 
 #if VERSION >= VERSION_79
     osSendMesg(&gDmaMutex, (OSMesg) 1, OS_MESG_NOBLOCK);

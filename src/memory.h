@@ -19,7 +19,14 @@ typedef enum MempoolFlags {
     SLOT_SAFEGUARD = (1 << 2)  // The slot is used, and marks the stopping point of a global pool clear.
 } MempoolFlags;
 
+#ifdef TARGET_S30
+// The main pool is an array (src/s30/ultra.c; gMainMemoryPool is its start)
+#define S30_RAM_SIZE 0x400000
+extern u8 gS30Ram[S30_RAM_SIZE];
+#define RAM_END ((s32) (uintptr_t) (gS30Ram + S30_RAM_SIZE))
+#else
 #define RAM_END 0x80400000
+#endif
 #define EXPANSION_RAM_END 0x80800000
 #define MAIN_POOL_SLOT_COUNT 1600
 #define FREE_QUEUE_SIZE 256

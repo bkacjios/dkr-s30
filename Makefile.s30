@@ -1,0 +1,145 @@
+# Makefile.s30 - Diddy Kong Racing for the PocketGo S30 (Allwinner A33, ARMv7
+# hard-float, Alpine musl, GLES2 on KMS/EGL, ALSA, evdev).
+#
+#   make setup && make extract       # the decomp's tools and extraction (host)
+#   make -f Makefile.s30 -j$(nproc)  # dkr
+#
+# The game reads its assets from the original ROM at run time (data/dkr.z64,
+# US 1.0); their byte order is fixed where they are loaded (src/s30/swap.c).
+#
+# WORK is the pocketgo-s30 build tree (sysroot + armv7-clang wrapper).
+
+WORK ?= ../../s30-build
+# The shared N64 platform library (display, renderer, audio, input)
+N64LIB ?= ../../n64
+SYSROOT := $(abspath $(WORK)/sysroot)
+REGION := us
+VERSION := v77
+
+# Game code: GCC against the device's musl headers; platform layer and link:
+# the project's clang/lld wrapper against the Alpine sysroot.
+CC := arm-none-eabi-gcc
+LINK := $(WORK)/bin/armv7-clang
+
+TARGET_FLAGS := -marm -march=armv7-a -mtune=cortex-a7 -mfpu=neon-vfpv4 \
+    -mfloat-abi=hard -fno-short-enums -isystem $(SYSROOT)/usr/include
+
+DEFINES := -D_FINALROM -DNDEBUG -DF3DDKR_GBI -DVERSION_$(REGION)_$(VERSION) -DBUILD_VERSION=VERSION_G \
+    '-DBUILD_VERSION_STRING="2.0G"' -D_MIPS_SZLONG=32 -D_LANGUAGE_C -DLANGUAGE_C -DNON_MATCHING -DAVOID_UB \
+    -DTARGET_S30 -D_GNU_SOURCE -DMODERN_CC -DCIC_ID=6103
+INCLUDES := -Iinclude/s30 -I. -Iinclude -Iinclude/PR -Iinclude/sys -Iassets -Isrc -Ilibultra \
+    -Ilibultra/src/gu -Ilibultra/src/libc -Ilibultra/src/io -Ilibultra/src/sc -Ilibultra/src/audio \
+    -Ilibultra/src/os -Isrc/hasm -I$(N64LIB)/include/s30
+
+CFLAGS := $(TARGET_FLAGS) -O2 -g -std=gnu11 $(DEFINES) $(INCLUDES) \
+    -fwrapv -fno-strict-aliasing -fno-common -fno-toplevel-reorder -funsigned-char \
+    -Wno-incompatible-pointer-types -Wno-int-conversion -Wno-implicit-function-declaration -Wno-implicit-int \
+    -Wno-return-mismatch -Wno-builtin-declaration-mismatch \
+    -MMD -MP
+
+BUILD_DIR := build_s30
+# libultra's OS from the library too (n64/src/os.c)
+N64LIB_OS := 1
+include $(N64LIB)/n64.mk
+TARGET := dkr
+LIBS := $(N64LIB_LIBS) -lz
+
+# libultra's OS and hardware (io, os) are the library's; its libc is the C
+# library's; sine and cosine take doubles apart as big-endian words. The
+# game's handwritten assembly: collision in src/hasm/collision.c (the
+# decomp's NON_MATCHING C), the rest in src/s30/game, gzip with zlib.
+LIBULTRA_SRCS := $(wildcard libultra/src/audio/*.c libultra/src/audio/mips1/*.c libultra/src/gu/*.c \
+    libultra/src/sc/*.c)
+EXCLUDED := libultra/src/gu/sinf.c libultra/src/gu/cosf.c
+GAME_SRCS := $(filter-out $(EXCLUDED),$(wildcard src/*.c) src/hasm/collision.c $(LIBULTRA_SRCS))
+# src/s30: the platform layer; src/s30/game: game code in place of assembly
+PLATFORM_SRCS := $(wildcard src/s30/*.c)
+GAME_SRCS += $(wildcard src/s30/game/*.c)
+
+GAME_OBJS := $(patsubst %.c,$(BUILD_DIR)/%.o,$(GAME_SRCS))
+PLATFORM_OBJS := $(patsubst %.c,$(BUILD_DIR)/%.o,$(PLATFORM_SRCS))
+# The math library's tables, from its assembly (tools/s30/math_tables.py);
+# which fields of each object map entry are 16/32-bit (tools/s30/entry_swaps.py)
+GEN_OBJS := $(BUILD_DIR)/gen/math_tables.o $(BUILD_DIR)/gen/entry_swaps.o
+ALL_OBJS := $(GAME_OBJS) $(PLATFORM_OBJS) $(GEN_OBJS) $(N64LIB_OBJS)
+
+all: $(TARGET)
+
+objects: $(GAME_OBJS)
+
+# Where the asset table and the end of the ROM are in the US 1.0 ROM (the
+# decomp's build/dkr.us.v77.map): the game reads them as cartridge addresses
+ROM_SYMS := -Wl,--defsym=__ASSETS_LUT_START=0x000ecb60 -Wl,--defsym=__ASSETS_LUT_END=0x000ecc30 \
+    -Wl,--defsym=__ROM_END=0x00ac9630
+
+# Image base 0x40000000, as the other ports: code, data and the heap above
+# the segment addresses. The main memory pool is gS30Ram (src/s30/ultra.c).
+$(TARGET): $(ALL_OBJS)
+	$(LINK) -no-pie -Wl,--image-base=0x40000000 -Wl,--defsym=gMainMemoryPool=gS30Ram $(ROM_SYMS) $(ALL_OBJS) \
+	    -o $@ $(LIBS)
+
+$(BUILD_DIR)/%.o: %.c
+	@mkdir -p $(dir $@)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILD_DIR)/gen/math_tables.c: src/hasm/ido/math_util.s tools/s30/math_tables.py
+	@mkdir -p $(dir $@)
+	python3 tools/s30/math_tables.py $< $@
+
+$(BUILD_DIR)/gen/entry_swaps.c: include/level_object_entries.h tools/dkr_assets_tool_extract.json tools/s30/entry_swaps.py
+	@mkdir -p $(dir $@)
+	python3 tools/s30/entry_swaps.py include/level_object_entries.h tools/dkr_assets_tool_extract.json $@
+
+$(GEN_OBJS): %.o: %.c
+	$(LINK) -O2 -c $< -o $@
+
+# Platform layer (and the game's code that replaces assembly): system
+# headers need a real Linux target
+$(PLATFORM_OBJS): $(BUILD_DIR)/%.o: %.c
+	@mkdir -p $(dir $@)
+	$(LINK) -O2 -g -Wall -D_GNU_SOURCE -DTARGET_S30 -Iinclude/s30 -I$(N64LIB)/include/s30 \
+	    -I$(SYSROOT)/usr/include/libdrm -MMD -MP -c $< -o $@
+
+# Headless 32-bit x86 build for debugging on the PC (tools/s30/host_stubs.c):
+# the game with libultra's OS and the audio microcode, no display or sound.
+#   make -f Makefile.s30 host && DKR_ROM=baseroms/baserom.us.v77.z64 ./dkr-host
+HOST_DIR := build_host
+HOST_CC := gcc -m32 -fno-pie -no-pie
+HOST_SAN ?= -fsanitize=address -fno-omit-frame-pointer --param asan-globals=0
+HOST_GAME_CFLAGS := -O1 -g -std=gnu11 $(DEFINES) $(INCLUDES) -fwrapv -fno-strict-aliasing -fno-common -fno-toplevel-reorder -funsigned-char \
+    -Wno-incompatible-pointer-types -Wno-int-conversion -Wno-implicit-function-declaration -Wno-implicit-int \
+    -Wno-return-mismatch -Wno-builtin-declaration-mismatch $(HOST_SAN) -MMD -MP
+HOST_PLATFORM_CFLAGS := -O1 -g -D_GNU_SOURCE -DTARGET_S30 -Iinclude/s30 -I$(N64LIB)/include/s30 -I$(N64LIB)/include \
+    $(HOST_SAN) -MMD -MP
+HOST_GAME_OBJS := $(patsubst %.c,$(HOST_DIR)/%.o,$(GAME_SRCS))
+HOST_PLATFORM_OBJS := $(patsubst %.c,$(HOST_DIR)/%.o,$(PLATFORM_SRCS) tools/s30/host_stubs.c) \
+    $(addprefix $(HOST_DIR)/n64/,os.o mixer.o) $(HOST_DIR)/gen/math_tables.o $(HOST_DIR)/gen/entry_swaps.o
+
+host: dkr-host
+
+dkr-host: $(HOST_GAME_OBJS) $(HOST_PLATFORM_OBJS)
+	$(HOST_CC) $(HOST_SAN) -Wl,-Ttext-segment=0x40000000 $(ROM_SYMS) -Wl,--defsym=gMainMemoryPool=gS30Ram $^ -o $@ \
+	    -lz -lpthread -lm
+
+$(HOST_GAME_OBJS): $(HOST_DIR)/%.o: %.c
+	@mkdir -p $(dir $@)
+	$(HOST_CC) $(HOST_GAME_CFLAGS) -c $< -o $@
+
+$(filter-out $(HOST_DIR)/n64/% $(HOST_DIR)/gen/%,$(HOST_PLATFORM_OBJS)): $(HOST_DIR)/%.o: %.c
+	@mkdir -p $(dir $@)
+	$(HOST_CC) $(HOST_PLATFORM_CFLAGS) -c $< -o $@
+
+$(HOST_DIR)/n64/%.o: $(N64LIB)/src/%.c
+	@mkdir -p $(dir $@)
+	$(HOST_CC) $(HOST_PLATFORM_CFLAGS) -c $< -o $@
+
+$(HOST_DIR)/gen/%.o: $(BUILD_DIR)/gen/%.c
+	@mkdir -p $(dir $@)
+	$(HOST_CC) -O1 -c $< -o $@
+
+clean:
+	rm -rf $(BUILD_DIR) $(TARGET) $(HOST_DIR) dkr-host
+
+.PHONY: all objects host clean
+
+-include $(ALL_OBJS:.o=.d) $(HOST_GAME_OBJS:.o=.d)

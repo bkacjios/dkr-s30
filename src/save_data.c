@@ -1600,7 +1600,7 @@ void init_controller_paks(void) {
     s8 maxControllers;
 
     sControllerMesgQueue = si_mesg();
-    sRumbleTable = (s16 *) get_misc_asset(ASSET_MISC_RUMBLE_DATA);
+    sRumbleTable = (s16 *) get_misc_asset_as(S30_MISC_HALVES, ASSET_MISC_RUMBLE_DATA);
     gRumbleIdle = gRumbleActive = 0xF;
     gRumbleOn = TRUE;
     gRumbleDetectionTimer = 0;

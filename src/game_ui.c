@@ -371,7 +371,7 @@ void hud_init(UNUSED s32 viewportCount) {
     gRaceStartSoundMask = NULL;
     gHudBalloonSoundMask = NULL;
     gMinimapXlu = 0;
-    D_80127194 = (LevelHeader_70 *) get_misc_asset(ASSET_MISC_58);
+    D_80127194 = (LevelHeader_70 *) get_misc_asset_as(S30_MISC_LIGHT_ANIM, ASSET_MISC_58);
     func_8007F1E8(D_80127194);
     sndp_set_group_volume(0, AL_SNDP_GROUP_VOLUME_MAX);
     sndp_set_group_volume(2, AL_SNDP_GROUP_VOLUME_MAX);

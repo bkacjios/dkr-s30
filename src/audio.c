@@ -1,4 +1,7 @@
 #include "audio.h"
+#ifdef TARGET_S30
+#include "s30_swap.h"
+#endif
 #include "memory.h"
 
 #include "asset_enums.h"
@@ -96,6 +99,12 @@ void audio_init(OSSched *sc) {
     gSoundTable = (SoundData *) mempool_alloc_safe(gSoundTableSize, COLOUR_TAG_CYAN);
     asset_load(ASSET_AUDIO, (u32) gSoundTable, addrPtr[ASSET_AUDIO_6], gSoundTableSize);
     gSoundCount = gSoundTableSize / sizeof(SoundData);
+#ifdef TARGET_S30
+    for (i = 0; i < gSoundCount; i++) {
+        s30_swap16(&gSoundTable[i].soundBite, 1);
+        s30_swap16(&gSoundTable[i].range, 1);
+    }
+#endif
 
     gSeqSoundTableSize = addrPtr[ASSET_AUDIO_6] - addrPtr[ASSET_AUDIO_5];
     gSeqSoundTable = (MusicData *) mempool_alloc_safe(gSeqSoundTableSize, COLOUR_TAG_CYAN);
@@ -107,10 +116,16 @@ void audio_init(OSSched *sc) {
     alBnkfNew(gSequenceBank, asset_rom_offset(ASSET_AUDIO, addrPtr[ASSET_AUDIO_0]));
     gSequenceTable = (ALSeqFile *) alHeapAlloc(&gALHeap, 1, 4);
     asset_load(ASSET_AUDIO, (u32) gSequenceTable, addrPtr[ASSET_AUDIO_4], 4);
+#ifdef TARGET_S30
+    s30_swap16(gSequenceTable, 2);
+#endif
 
     seqfSize = (gSequenceTable->seqCount) * 8 + 4;
     gSequenceTable = mempool_alloc_safe(seqfSize, COLOUR_TAG_CYAN);
     asset_load(ASSET_AUDIO, (u32) gSequenceTable, addrPtr[ASSET_AUDIO_4], seqfSize);
+#ifdef TARGET_S30
+    s30_swap16(gSequenceTable, 2); // alSeqFileNew swaps the rest
+#endif
     alSeqFileNew(gSequenceTable, asset_rom_offset(ASSET_AUDIO, addrPtr[ASSET_AUDIO_4]));
     gSeqLengthTable = (u32 *) mempool_alloc_safe((gSequenceTable->seqCount) * 4, COLOUR_TAG_CYAN);
 
@@ -1017,6 +1032,9 @@ void music_sequence_init(ALCSPlayer *seqp, void *sequence, u8 *seqID, ALCSeq *se
         asset_load(ASSET_AUDIO, (u32) sequence,
                    gSequenceTable->seqArray[*seqID].offset - asset_rom_offset(ASSET_AUDIO, 0),
                    (s32) gSeqLengthTable[*seqID]);
+#ifdef TARGET_S30
+        s30_swap32(sequence, 17); // ALCMidiHdr: the track offsets and division; the tracks are bytes
+#endif
         alCSeqNew(seq, sequence);
         alCSPSetSeq(seqp, seq);
         alCSPPlay(seqp);

@@ -595,7 +595,15 @@ typedef struct TexCoords {
 #define BACKFACE_DRAW 0x40
 #define TRI_FLAG_80 0x80
 
+#ifdef TARGET_S30
+// Triangle.vertices and TexCoords.texCoords in this CPU's byte order: the
+// flags and indices as bytes 0-3, u and v as halves 0-1
+#define DKR_TRIANGLE(flags, ind0, ind1, ind2) (((flags) << 0) | ((ind0) << 8) | ((ind1) << 16) | ((u32) (ind2) << 24))
+#define DKR_TEXCOORDS_WORD(uv) ((((u32) (uv)) >> 16) | (((u32) (uv)) << 16)) // from (u << 16) | v
+#else
 #define DKR_TRIANGLE(flags, ind0, ind1, ind2) (((flags) << 24) | ((ind0) << 16) | ((ind1) << 8) | ((ind2) << 0))
+#define DKR_TEXCOORDS_WORD(uv) (uv)
+#endif
 
 /* Size: 0x10 bytes */
 typedef struct Triangle {

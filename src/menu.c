@@ -1,4 +1,7 @@
 #include "menu.h"
+#ifdef TARGET_S30
+#include "s30_swap.h"
+#endif
 #include "asset_enums.h"
 #include "asset_loading.h"
 #include "audio.h"
@@ -1975,6 +1978,9 @@ void load_menu_text(s32 language) {
     }
 
     asset_load(ASSET_MENU_TEXT, (u32) temp, langIndex, size);
+#ifdef TARGET_S30
+    s30_swap32(temp, gMenuTextLangTable[0]);
+#endif
 
     // TODO: Find a way to clean up the ugly hacks.
     // Fill up the lookup table with proper RAM addresses
@@ -2469,7 +2475,7 @@ void init_save_data(void) {
         offset += saveFileSize;
     }
 
-    gCheatsAssetData = (u16(*)[30]) get_misc_asset(ASSET_MISC_MAGIC_CODES);
+    gCheatsAssetData = (u16(*)[30]) get_misc_asset_as(S30_MISC_HALVES, ASSET_MISC_MAGIC_CODES);
     gNumberOfCheats = (*gCheatsAssetData)[0];
 #if VERSION >= VERSION_79
     gMenuText = mempool_alloc_safe(1280 * sizeof(char *), COLOUR_TAG_WHITE);
@@ -7594,7 +7600,11 @@ void fileselect_render(UNUSED s32 updateRate) {
     u32 colour;
     s32 i;
     UNUSED s32 pad[3];
+#ifdef AVOID_UB
+    char trimmedFilename[16]; //!@bug: filename_trim writes past 4 (into pad on the N64)
+#else
     char trimmedFilename[4];
+#endif
 
     if (osTvType == OS_TV_TYPE_PAL) {
         yPos = 12;

@@ -368,6 +368,14 @@ void set_world_shading(f32 ambient, f32 diffuse, s16 angleX, s16 angleY, s16 ang
 void set_shading_properties(ShadeProperties *arg0, f32 ambient, f32 diffuse, s16 angleX, s16 angleY, s16 angleZ);
 void obj_shade_fancy(ObjectModel *model, Object *object, s32 arg2, f32 intensity);
 s32 *get_misc_asset(s32 index);
+// A misc asset read as a type (S30_MISC_*): on the S30 its byte order is fixed
+// the first time
+#ifdef TARGET_S30
+#include "s30_swap.h"
+#define get_misc_asset_as(type, index) ((s32 *) s30_misc_asset((index), (type)))
+#else
+#define get_misc_asset_as(type, index) get_misc_asset(index)
+#endif
 s32 is_bridge_raised(s32 index);
 void start_bridge_timer(s32 index);
 void obj_bridge_pos(s32 timing, f32 *x, f32 *y, f32 *z);

@@ -8,6 +8,10 @@
 StackInfo *stack_pointer(void) {
     return (StackInfo *) __$sp;
 }
+#elif defined(TARGET_S30)
+StackInfo *stack_pointer(void) {
+    return (StackInfo *) __builtin_frame_address(0);
+}
 #else
 /**
  * Uses GCC specific code to get the current stack pointer.

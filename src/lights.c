@@ -156,7 +156,11 @@ ObjectLight *light_add_from_object_header(Object *obj, ObjectHeader24 *arg1) {
     light = NULL;
     if (gNumActiveLights < gMaxLights) {
         light = gActiveLights[gNumActiveLights++];
+#ifdef TARGET_S30
+        light->unk0 = arg1->unk8A >> 4; // the top 4 bits of the big-endian word (kept as bytes)
+#else
         light->unk0 = arg1->unk8 >> 0x1C;
+#endif
         light->unk1 = arg1->unk9;
         light->unk2 = arg1->unkB;
         light->type = arg1->unkA;
@@ -181,7 +185,7 @@ ObjectLight *light_add_from_object_header(Object *obj, ObjectHeader24 *arg1) {
         light->targetIntensityChangeRate = 0;
         light->targetIntensityDiff = 0;
         if (arg1->unk6 != 0xFFFF) {
-            light->unk44_asset = (MiscAssetObjectHeader24 *) get_misc_asset(arg1->unk6);
+            light->unk44_asset = (MiscAssetObjectHeader24 *) get_misc_asset_as(S30_MISC_LIGHT_ANIM, arg1->unk6);
             light->unk48 = light->unk44_asset->unk0;
             light->unk4A = 0;
             light->unk4C = 0;

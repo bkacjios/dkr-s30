@@ -282,7 +282,7 @@ void init_particle_assets(void) {
             (ParticleBehaviour *) (((u8 *) gParticleBehavioursAssets) + ((s32) gParticleBehavioursAssetTable[i]));
         if (((u32) gParticleBehavioursAssetTable[i]->colourLoop) != 0xFFFFFFFF) {
             gParticleBehavioursAssetTable[i]->colourLoop =
-                (ColorLoopEntry *) get_misc_asset((s32) gParticleBehavioursAssetTable[i]->colourLoop);
+                (ColorLoopEntry *) get_misc_asset_as(S30_MISC_COLOUR_LOOP, (s32) gParticleBehavioursAssetTable[i]->colourLoop);
         }
     }
 }

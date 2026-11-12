@@ -1,4 +1,7 @@
 #include "tracks.h"
+#ifdef TARGET_S30
+#include "s30_swap.h"
+#endif
 
 #include "asset_loading.h"
 #include "camera.h"
@@ -1121,9 +1124,9 @@ s32 func_80027568(void) {
     ret = FALSE;
     for (var_t4 = 0; var_t4 < gNumCollisionCandidates && ret == FALSE; var_t4++) {
         flipSide = gCollisionCandidates[var_t4];
-        if (flipSide > 0) {
+        if (CANDIDATE_IS_SEGMENT(flipSide)) {
             // this is segment Entry
-            segment = (LevelModelSegment *) PHYS_TO_K0(flipSide);
+            segment = CANDIDATE_TO_SEGMENT(flipSide);
         } else {
             colNode = (CollisionNode *) flipSide;
             curViewport = colNode->colPlaneIndex << 2;
@@ -2858,6 +2861,9 @@ void generate_track(s32 modelId) {
 
     asset_load(ASSET_LEVEL_MODELS, temp, mdl, temp_s4);
     gzip_inflate((u8 *) temp, (u8 *) gCurrentLevelModel);
+#ifdef TARGET_S30
+    s30_swap_level_model(gCurrentLevelModel);
+#endif
     mempool_free(gLevelModelTable); // Done with the level models table, so free it.
 
     mdl = (s32) gCurrentLevelModel;
@@ -3874,9 +3880,15 @@ void func_8002F440(void) {
     Triangle *tri;
     Vertex *vert;
     s32 alpha;
+#ifdef AVOID_UB
+    s16 sp90[8]; //!@bug: a clipped triangle can have 7 corners
+    s32 var_s2;
+    s16 sp80[8];
+#else
     s16 sp90[6];
     s32 var_s2;
     s16 sp80[6];
+#endif
     f32 temp_f18;
     f32 yRotCos;
     f32 yRotSin;

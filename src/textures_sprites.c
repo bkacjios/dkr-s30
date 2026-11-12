@@ -1,4 +1,7 @@
 #include "textures_sprites.h"
+#ifdef TARGET_S30
+#include "s30_swap.h"
+#endif
 #include "asset_loading.h"
 #include "game_ui.h"
 #include "gzip.h"
@@ -495,6 +498,9 @@ TextureHeader *load_texture(s32 id) {
     assetOffset = gTextureAssetTable[tableType][assetIndex];
     assetSize = gTextureAssetTable[tableType][assetIndex + 1] - assetOffset;
     asset_load(assetSection, (u32) gTempTextureHeader, assetOffset, sizeof(TempTexHeader));
+#ifdef TARGET_S30
+    s30_swap_texture_header(&gTempTextureHeader->header);
+#endif
     numberOfTextures = gTempTextureHeader->header.numOfTextures >> 8;
 
     // Allocate memory for the texture and its display lists.
@@ -505,6 +511,9 @@ TextureHeader *load_texture(s32 id) {
             return NULL;
         }
         asset_load(assetSection, (u32) tex, assetOffset, assetSize);
+#ifdef TARGET_S30
+        s30_swap_texture(tex);
+#endif
     } else {
         // Allocate enough memory for the decompressed texture
         uncompressedSize = byteswap32((u8 *) &gTempTextureHeader->uncompressedSize) + sizeof(TextureHeader);
@@ -519,6 +528,9 @@ TextureHeader *load_texture(s32 id) {
         compressedStart = (s32) compressedStart - (s32) compressedStart % 16;
         asset_load(assetSection, compressedStart, assetOffset, assetSize);
         gzip_inflate((u8 *) (compressedStart + sizeof(TextureHeader)), (u8 *) tex);
+#ifdef TARGET_S30
+        s30_swap_texture(tex);
+#endif
         assetSize = uncompressedSize - sizeof(TextureHeader);
     }
 
@@ -982,6 +994,9 @@ Sprite *tex_load_sprite(s32 spriteID, s32 arg1) {
     size = gSpriteOffsetTable[spriteID];
     spriteAsset = gCurrentSpriteAsset;
     asset_load(ASSET_SPRITES, (u32) spriteAsset, size, gSpriteOffsetTable[spriteID + 1] - size);
+#ifdef TARGET_S30
+    s30_swap_sprite(spriteAsset);
+#endif
 
     numTextures = spriteAsset->frameTexOffsets[spriteAsset->numberOfFrames];
     allocSize = numTextures * 4 * sizeof(Vertex);
@@ -1095,6 +1110,9 @@ s32 tex_asset_size(s32 id) {
     new_var2 = gTempTextureHeader;
     if (new_var2->header.isCompressed) {
         asset_load(textureTable, (u32) new_var2, textureRomOffset, sizeof(TempTexHeader));
+#ifdef TARGET_S30
+        s30_swap_texture_header(&new_var2->header);
+#endif
         new_var4 = gTempTextureHeader;
         size = byteswap32((u8 *) (&new_var4->uncompressedSize));
     }
@@ -1174,6 +1192,9 @@ s32 load_sprite_info(s32 spriteIndex, s32 *anchorXOut, s32 *anchorYOut, s32 *num
     spriteAsset = gCurrentSpriteAsset;
     new_var = size;
     asset_load(ASSET_SPRITES, (u32) spriteAsset, start, new_var);
+#ifdef TARGET_S30
+    s30_swap_sprite(spriteAsset);
+#endif
     tex = load_texture(spriteAsset->frameTexOffsets[0] + spriteAsset->baseTextureId);
     if (tex != NULL) {
         *formatOut = TEX_FORMAT(tex->format);
@@ -1218,6 +1239,9 @@ void func_8007CA68(s32 arg0, s32 arg1, s32 *arg2, s32 *arg3, s32 *arg4) {
     spriteAsset = gCurrentSpriteAsset; \
     asset_load(ASSET_SPRITES, (u32)spriteAsset, temp_a2, gSpriteOffsetTable[arg0 + 1] - temp_a2);
     // clang-format on
+#ifdef TARGET_S30
+    s30_swap_sprite(spriteAsset);
+#endif
 
     if (spriteAsset->numberOfFrames < arg1) {
     failedExit:
@@ -1611,6 +1635,13 @@ void material_init(TextureHeader *tex, Gfx *_dList) {
  * Returns the palette offset from the heap.
  */
 s32 tex_palette_id(s16 paletteID) {
+#ifdef AVOID_UB
+    // A later frame of an animated CI texture still has the ROM's offset
+    // here (load_texture sets it after material_init): out of the palettes
+    if (paletteID < 0 || paletteID >= MAX_TEX_PALETTE_SIZE) {
+        paletteID = 0;
+    }
+#endif
     return (s32) (paletteID + gCiPalettes);
 }
 

@@ -81,3 +81,9 @@ tools/ido-recomp
 tools/binutils
 *.d
 treemap.html
+
+# PocketGo S30 build (Makefile.s30)
+/build_s30/
+/dkr
+/build_host/
+/dkr-host

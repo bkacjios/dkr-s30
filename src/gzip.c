@@ -56,6 +56,31 @@ s32 gzip_size_uncompressed(s32 assetIndex, s32 assetOffset) {
  * Returns the pointer to the decompressed data.
  * Official name: rzipUncompress
  */
+#ifdef TARGET_S30
+// zlib's raw inflate in place of the game's (assembly). The header's first
+// four bytes are the uncompressed size, little-endian. The input may sit at
+// the end of the output buffer, as on the N64: output written stays behind
+// the input still to be read.
+#include <zlib.h>
+u8 *gzip_inflate(u8 *compressedInput, u8 *decompressedOutput) {
+    z_stream s;
+    s32 size = byteswap32(compressedInput);
+    s32 ret;
+
+    bzero(&s, sizeof(s));
+    s.next_in = compressedInput + 5;
+    s.avail_in = 0x7FFFFFFF;
+    s.next_out = decompressedOutput;
+    s.avail_out = size;
+    inflateInit2(&s, -MAX_WBITS);
+    ret = inflate(&s, Z_FINISH);
+    if (ret != Z_STREAM_END) {
+        osSyncPrintf("gzip: inflate %d at %p, %d of %d bytes\n", ret, compressedInput, (s32) s.total_out, size);
+    }
+    inflateEnd(&s);
+    return decompressedOutput;
+}
+#else
 u8 *gzip_inflate(u8 *compressedInput, u8 *decompressedOutput) {
     gzip_inflate_input = compressedInput + 5; // The compression header is 5 bytes.
     gzip_inflate_output = decompressedOutput;
@@ -64,6 +89,7 @@ u8 *gzip_inflate(u8 *compressedInput, u8 *decompressedOutput) {
     while (gzip_inflate_block() != 0) {} // Keep calling gzip_inflate_block() until it returns 0.
     return decompressedOutput;
 }
+#endif
 
 /* Official name: huft_build */
 void gzip_huft_build(u32 *b, u32 n, u32 s, u16 *d, u16 *e, huft **t, s32 *m) {

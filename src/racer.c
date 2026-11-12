@@ -1,4 +1,7 @@
 #include "racer.h"
+#ifdef TARGET_S30
+#include "s30_swap.h"
+#endif
 #include "memory.h"
 #include "menu.h"
 #include "video.h"
@@ -464,10 +467,10 @@ void func_80042D20(Object *obj, Object_Racer *racer, s32 updateRate) {
         racer->unk1CA = 0;
         racer->unk1C9 = 0;
         if (temp_v0 != 0) {
-            miscAsset3 = (f32 *) get_misc_asset(ASSET_MISC_18);
+            miscAsset3 = (f32 *) get_misc_asset_as(S30_MISC_WORDS, ASSET_MISC_18);
             index = temp_v0;
         } else {
-            miscAsset3 = (f32 *) get_misc_asset(ASSET_MISC_17);
+            miscAsset3 = (f32 *) get_misc_asset_as(S30_MISC_WORDS, ASSET_MISC_17);
         }
         racer->unk124 = miscAsset3[index - 1];
     }
@@ -1897,7 +1900,7 @@ void func_80046524(s32 updateRate, f32 updateRateF, Object *obj, Object_Racer *r
         xVelTemp = 0.0f;
     }
     if (wheelsOnStone != 0) {
-        var_f0 = ((f32 *) get_misc_asset(ASSET_MISC_32))[wheelsOnStone];
+        var_f0 = ((f32 *) get_misc_asset_as(S30_MISC_WORDS, ASSET_MISC_32))[wheelsOnStone];
         xVelTemp *= var_f0;
         spFC /= var_f0;
         racer->magnetTimer = 0;
@@ -2180,7 +2183,7 @@ void func_80046524(s32 updateRate, f32 updateRateF, Object *obj, Object_Racer *r
         }
     }
     if (gCurrentPlayerIndex != PLAYER_COMPUTER && racer->boostTimer == 0 && gNumViewports < 2) {
-        asset20 = (Object_Boost *) get_misc_asset(ASSET_MISC_20);
+        asset20 = (Object_Boost *) get_misc_asset_as(S30_MISC_BOOST, ASSET_MISC_20);
         asset20 = &asset20[racer->racerIndex];
         iTemp = ((racer->boostType & EMPOWER_BOOST) >> 2) + 10;
         if (iTemp > 10) {
@@ -3334,7 +3337,7 @@ void func_80049794(s32 updateRate, f32 updateRateF, Object *obj, Object_Racer *r
         }
     }
     if (gCurrentPlayerIndex != PLAYER_COMPUTER && racer->boostTimer == 0 && gNumViewports < 2) {
-        boostObj = (Object_Boost *) get_misc_asset(ASSET_MISC_20);
+        boostObj = (Object_Boost *) get_misc_asset_as(S30_MISC_BOOST, ASSET_MISC_20);
         boostObj = &boostObj[racer->racerIndex];
         var_t0 = ((racer->boostType & EMPOWER_BOOST) >> 2) + 9;
         if (var_t0 >= 10) {
@@ -4229,14 +4232,14 @@ void update_player_racer(Object *obj, s32 updateRate) {
         } else {
             tempRacer->unk18C = 0;
         }
-        gCurrentRacerMiscAssetPtr = (f32 *) get_misc_asset(ASSET_MISC_RACER_WEIGHT);
+        gCurrentRacerMiscAssetPtr = (f32 *) get_misc_asset_as(S30_MISC_WORDS, ASSET_MISC_RACER_WEIGHT);
         gCurrentRacerWeightStat = gCurrentRacerMiscAssetPtr[tempRacer->characterId] * 0.45;
         if (tempRacer->bubbleTrapTimer > 0) {
             gCurrentRacerWeightStat = -0.02f;
         }
-        gCurrentRacerMiscAssetPtr = (f32 *) get_misc_asset(ASSET_MISC_RACER_HANDLING);
+        gCurrentRacerMiscAssetPtr = (f32 *) get_misc_asset_as(S30_MISC_WORDS, ASSET_MISC_RACER_HANDLING);
         gCurrentRacerHandlingStat = gCurrentRacerMiscAssetPtr[tempRacer->characterId];
-        gCurrentRacerMiscAssetPtr = (f32 *) get_misc_asset(ASSET_MISC_RACER_UNUSED_11);
+        gCurrentRacerMiscAssetPtr = (f32 *) get_misc_asset_as(S30_MISC_WORDS, ASSET_MISC_RACER_UNUSED_11);
         gCurrentRacerUnusedMiscAsset11 = gCurrentRacerMiscAssetPtr[tempRacer->characterId];
         if (tempRacer->unk1FE == 3) {
             gCurrentRacerWeightStat *= (f32) tempRacer->unk1FF / 256;
@@ -4254,8 +4257,8 @@ void update_player_racer(Object *obj, s32 updateRate) {
             tempRacer->unk84 -= tempRacer->unk84 * 0.0625 * updateRateF;
             tempRacer->unk88 -= tempRacer->unk88 * 0.0625 * updateRateF;
         }
-        gCurrentRacerMiscAssetPtr = (f32 *) get_misc_asset(obj->header->miscAssetIds[0]);
-        D_8011D568 = (f32 *) get_misc_asset(obj->header->miscAssetIds[1]);
+        gCurrentRacerMiscAssetPtr = (f32 *) get_misc_asset_as(S30_MISC_WORDS, obj->header->miscAssetIds[0]);
+        D_8011D568 = (f32 *) get_misc_asset_as(S30_MISC_WORDS, obj->header->miscAssetIds[1]);
 
         if (obj->y_velocity < 4.0 && (tempRacer->groundedWheels > 2 || tempRacer->buoyancy != 0.0)) {
             tempRacer->unk1F1 = 0;
@@ -4950,7 +4953,7 @@ void update_car(s32 updateRate, f32 updateRateF, Object *racerObj, Object_Racer 
             }
         }
         if (racer->boostTimer == 0 && gNumViewports < 2) {
-            asset20 = (Object_Boost *) get_misc_asset(ASSET_MISC_20);
+            asset20 = (Object_Boost *) get_misc_asset_as(S30_MISC_BOOST, ASSET_MISC_20);
             asset20 = &asset20[racer->racerIndex];
             var_v1 = ((racer->boostType & EMPOWER_BOOST) >> 2) + 0x10;
             if (var_v1 > 0x10) {
@@ -5381,7 +5384,7 @@ void update_player_car_velocity_ground(Object *obj, Object_Racer *racer, s32 upd
     }
     // Per-character stat, indexed by character ID. Steering adds to lateral velocity divided by this value,
     // so a higher value means the character slides less.
-    miscAsset = (f32 *) get_misc_asset(ASSET_MISC_8);
+    miscAsset = (f32 *) get_misc_asset_as(S30_MISC_WORDS, ASSET_MISC_8);
     // Degrade lateral velocity
     if (gCurrentPlayerIndex != PLAYER_COMPUTER) {
         if (!(racer->velocity > -2.0) && racer->drift_direction == 0 && !racer->raceFinished) {
@@ -5409,7 +5412,7 @@ void update_player_car_velocity_ground(Object *obj, Object_Racer *racer, s32 upd
     racer->lateral_velocity *= velocityDiff;
     gCurrentSurfaceType = surfaceType;
     if (stoneWheels != 0) {
-        miscAsset = (f32 *) get_misc_asset(ASSET_MISC_32);
+        miscAsset = (f32 *) get_misc_asset_as(S30_MISC_WORDS, ASSET_MISC_32);
         topSpeed *= miscAsset[stoneWheels];
         racer->magnetTimer = 0;
         racer->lateral_velocity = 0.0f;
@@ -6852,7 +6855,7 @@ void onscreen_ai_racer_physics(Object *obj, Object_Racer *racer, UNUSED s32 upda
     if (obj->trans.y_position > gCurrentCourseHeight) {
         obj->trans.y_position = gCurrentCourseHeight;
     }
-    racerSize = (f32 *) get_misc_asset(ASSET_MISC_RACER_HITBOX_SIZE);
+    racerSize = (f32 *) get_misc_asset_as(S30_MISC_WORDS, ASSET_MISC_RACER_HITBOX_SIZE);
     surface = SURFACE_NONE;
     radius = racerSize[racer->vehicleIDPrev];
     tempPos.x = obj->trans.x_position;
@@ -8363,6 +8366,9 @@ s32 load_tt_ghost(s32 ghostOffset, s32 size, s16 *outTime) {
     GhostHeader *ghost = mempool_alloc_safe(size, COLOUR_TAG_RED);
     if (ghost != NULL) {
         asset_load(ASSET_TTGHOSTS, (u32) ghost, ghostOffset, size);
+#ifdef TARGET_S30
+        s30_swap_ghost(ghost, size);
+#endif
         if (gGhostData[GHOST_STAFF] != NULL) {
             mempool_free(gGhostData[GHOST_STAFF]);
         }
@@ -8696,14 +8702,14 @@ void update_AI_racer(Object *obj, Object_Racer *racer, s32 updateRate, f32 updat
     } else {
         racer->unk18C = 0;
     }
-    gCurrentRacerMiscAssetPtr = (f32 *) get_misc_asset(ASSET_MISC_RACER_WEIGHT);
+    gCurrentRacerMiscAssetPtr = (f32 *) get_misc_asset_as(S30_MISC_WORDS, ASSET_MISC_RACER_WEIGHT);
     gCurrentRacerWeightStat = gCurrentRacerMiscAssetPtr[racer->characterId] * 0.45;
     if (racer->bubbleTrapTimer > 0) {
         gCurrentRacerWeightStat = -0.02f;
     }
-    gCurrentRacerMiscAssetPtr = (f32 *) get_misc_asset(ASSET_MISC_RACER_HANDLING);
+    gCurrentRacerMiscAssetPtr = (f32 *) get_misc_asset_as(S30_MISC_WORDS, ASSET_MISC_RACER_HANDLING);
     gCurrentRacerHandlingStat = gCurrentRacerMiscAssetPtr[racer->characterId];
-    gCurrentRacerMiscAssetPtr = (f32 *) get_misc_asset(ASSET_MISC_RACER_UNUSED_11);
+    gCurrentRacerMiscAssetPtr = (f32 *) get_misc_asset_as(S30_MISC_WORDS, ASSET_MISC_RACER_UNUSED_11);
     gCurrentRacerUnusedMiscAsset11 = gCurrentRacerMiscAssetPtr[racer->characterId];
     xPos = obj->trans.x_position;
     yPos = obj->trans.y_position;
@@ -8781,8 +8787,8 @@ void update_AI_racer(Object *obj, Object_Racer *racer, s32 updateRate, f32 updat
             racer->unk88 -= racer->unk88 * 0.0625 * updateRateF;
         }
         gCurrentRacerHandlingStat = 1;
-        gCurrentRacerMiscAssetPtr = (f32 *) get_misc_asset(ASSET_MISC_RACERACCELERATION_UNKNOWN0);
-        D_8011D568 = (f32 *) get_misc_asset(obj->header->miscAssetIds[1]);
+        gCurrentRacerMiscAssetPtr = (f32 *) get_misc_asset_as(S30_MISC_WORDS, ASSET_MISC_RACERACCELERATION_UNKNOWN0);
+        D_8011D568 = (f32 *) get_misc_asset_as(S30_MISC_WORDS, obj->header->miscAssetIds[1]);
         if ((obj->y_velocity < 4.0) && ((racer->groundedWheels >= 3) || (racer->buoyancy != 0.0))) {
             racer->unk1F1 = 0;
         }
@@ -8993,7 +8999,7 @@ void func_8005B818(Object *obj, Object_Racer *racer, s32 updateRate, f32 updateR
     LevelModel *model;
 #endif
 
-    gCurrentRacerMiscAssetPtr = (f32 *) get_misc_asset(ASSET_MISC_RACERACCELERATION_UNKNOWN0);
+    gCurrentRacerMiscAssetPtr = (f32 *) get_misc_asset_as(S30_MISC_WORDS, ASSET_MISC_RACERACCELERATION_UNKNOWN0);
     levelHeader = level_header();
     checkpointCount = get_checkpoint_count();
     if (checkpointCount == 0) {

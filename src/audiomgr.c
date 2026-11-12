@@ -1,4 +1,7 @@
 #include "audiomgr.h"
+#ifdef TARGET_S30
+#include "s30_swap.h"
+#endif
 #include "asset_loading.h"
 #include "common.h"
 #include "math_util.h"
@@ -143,8 +146,13 @@ void amCreateAudioMgr(ALSynConfig *c, OSPri pri, OSSched *audSched) {
         assetSize = assetAudioTable[ASSET_AUDIO_9] - assetAudioTable[ASSET_AUDIO_8];
         asset8 = mempool_alloc_safe(assetSize, COLOUR_TAG_CYAN);
         asset_load(ASSET_AUDIO, (u32) asset8, assetAudioTable[ASSET_AUDIO_8], assetSize);
+#ifdef TARGET_S30
+        s30_swap32(asset8, assetSize / 4); // the reverb's parameters (s32s)
+#endif
         c->params = asset8;
-        c[1].maxVVoices = 0;
+#ifndef AVOID_UB
+        c[1].maxVVoices = 0; //!@bug: past the end of the caller's ALSynConfig
+#endif
         alInit(&__am.g, c);
         //!@bug: Forgot to free assetAudioTable
         mempool_free(asset8);
@@ -304,9 +312,20 @@ static u32 __amHandleFrameMsg(AudioInfo *info, AudioInfo *lastInfo) {
     samplesLeft = osAiGetLength() >> 2; /* divide by four, to convert bytes */
                                         /* to stereo 16 bit samples */
     info->frameSamples = (16 + (frameSize - samplesLeft + EXTRA_SAMPLES)) & ~0xf;
+#ifdef AVOID_UB
+    // More queued than a frame (the N64's AI never holds that much): kept
+    // within the buffers' sizes instead of going negative
+    if ((s32) info->frameSamples < (s32) minFrameSize) {
+        info->frameSamples = minFrameSize;
+    }
+    if ((s32) info->frameSamples > (s32) maxFrameSize) {
+        info->frameSamples = maxFrameSize;
+    }
+#else
     if ((u32) info->frameSamples < minFrameSize) {
         info->frameSamples = minFrameSize;
     }
+#endif
 
     cmdp = alAudioFrame(__am.ACMDList[curAcmdList], &gAudioCmdLen, audioPtr, info->frameSamples);
 

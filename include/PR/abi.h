@@ -402,6 +402,50 @@ typedef short ENVMIX_STATE[40];
         _a->words.w1 = (unsigned int) d;                                \
 }
 
+#ifdef TARGET_S30
+/*
+ * The PocketGo S30: the commands run at once on the software microcode
+ * (n64/src/mixer.c, its libultra 2.0 aspMain functions) instead of going into
+ * the command list; each argument is narrowed as the command word would.
+ */
+#include "s30_mixer.h"
+
+#undef aADPCMdec
+#undef aPoleFilter
+#undef aClearBuffer
+#undef aEnvMixer
+#undef aInterleave
+#undef aLoadBuffer
+#undef aMix
+#undef aPan
+#undef aResample
+#undef aSaveBuffer
+#undef aSegment
+#undef aSetBuffer
+#undef aSetVolume
+#undef aSetLoop
+#undef aDMEMMove
+#undef aLoadADPCM
+
+#define aSegment(pkt, s, b) do { } while (0)
+#define aClearBuffer(pkt, d, c) aClearBufferImpl((unsigned short) (d), (unsigned short) (c))
+#define aSetBuffer(pkt, f, i, o, c) \
+    aSetBufferAbi1Impl((unsigned char) (f), (unsigned short) (i), (unsigned short) (o), (unsigned short) (c))
+#define aLoadBuffer(pkt, s) aLoadBufferAbi1Impl((const void *) (s))
+#define aSaveBuffer(pkt, s) aSaveBufferAbi1Impl((void *) (s))
+#define aSetVolume(pkt, f, v, t, r) aSetVolumeAbi1Impl((unsigned char) (f), (short) (v), (short) (t), (short) (r))
+#define aEnvMixer(pkt, f, s) aEnvMixerAbi1Impl((unsigned char) (f), (short *) (s))
+#define aMix(pkt, f, g, i, o) aMixAbi1Impl((short) (g), (unsigned short) (i), (unsigned short) (o))
+#define aPoleFilter(pkt, f, g, s) aPoleFilterAbi1Impl((unsigned char) (f), (unsigned short) (g), (short *) (s))
+#define aResample(pkt, f, p, s) aResampleImpl((unsigned char) (f), (unsigned short) (p), (short *) (s))
+#define aADPCMdec(pkt, f, s) aADPCMdecImpl((unsigned char) (f), (short *) (s))
+#define aLoadADPCM(pkt, c, d) aLoadADPCMImpl((c), (const short *) (d))
+#define aSetLoop(pkt, a) aSetLoopImpl((S30MixState *) (a))
+#define aDMEMMove(pkt, i, o, c) aDMEMMoveImpl((unsigned short) (i), (unsigned short) (o), (unsigned short) (c))
+/* Output address and byte count from the last aSetBuffer */
+#define aInterleave(pkt, l, r) aInterleaveSetBufferImpl((unsigned short) (l), (unsigned short) (r))
+#endif /* TARGET_S30 */
+
 #endif /* _LANGUAGE_C */
 
 #endif /* !_ABI_H_ */

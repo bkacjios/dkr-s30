@@ -31,11 +31,42 @@ static  void _bnkfPatchInst(ALInstrument *i, s32 offset, s32 table);
 static  void _bnkfPatchSound(ALSound *s, s32 offset, s32 table);
 static  void _bnkfPatchWaveTable(ALWaveTable *w, s32 offset, s32 table);
 
+#ifdef TARGET_S30
+/*
+ * The PocketGo S30: the bank comes from the ROM big-endian; each struct's
+ * fields are put in this CPU's byte order as the patching first reaches it.
+ * Banks, instruments, sounds and wavetables have a flags byte for that;
+ * envelopes, books and loops (shared between sounds) are remembered here.
+ */
+#include "s30_swap.h"
+
+static void *sSwapped[1024];
+static s32 sNumSwapped;
+
+/* TRUE the first time p is seen */
+static s32 swap_once(void *p) {
+    s32 i;
+
+    for (i = 0; i < sNumSwapped; i++) {
+        if (sSwapped[i] == p) {
+            return FALSE;
+        }
+    }
+    if (sNumSwapped < (s32) (sizeof(sSwapped) / sizeof(sSwapped[0]))) {
+        sSwapped[sNumSwapped++] = p;
+    }
+    return TRUE;
+}
+#endif
+
 void alSeqFileNew(ALSeqFile *file, u8 *base)
 {
     s32 offset = (s32) base;
     s32 i;
     
+#ifdef TARGET_S30
+    s30_swap32(file->seqArray, file->seqCount * 2); // the caller swapped revision and seqCount
+#endif
     /*
      * patch the file so that offsets are pointers
      */
@@ -51,6 +82,10 @@ void alBnkfNew(ALBankFile *file, u8 *table)
     
     s32 i;
     
+#ifdef TARGET_S30
+    s30_swap16(&file->revision, 2);
+    s30_swap32(file->bankArray, file->bankCount);
+#endif
     /*
      * check the file format revision in debug libraries
      */
@@ -74,6 +109,11 @@ void _bnkfPatchBank(ALBank *bank, s32 offset, s32 table)
         return;
 
     bank->flags = 1;
+#ifdef TARGET_S30
+    s30_swap16(&bank->instCount, 1);
+    s30_swap32(&bank->sampleRate, 2);
+    s30_swap32(bank->instArray, bank->instCount);
+#endif
 
     if (bank->percussion) {
         bank->percussion = (ALInstrument *)((u8 *)bank->percussion + offset);
@@ -96,6 +136,10 @@ void _bnkfPatchInst(ALInstrument *inst, s32 offset, s32 table)
         return;
 
     inst->flags = 1;
+#ifdef TARGET_S30
+    s30_swap16(&inst->bendRange, 2);
+    s30_swap32(inst->soundArray, inst->soundCount);
+#endif
     
     for (i = 0; i < inst->soundCount; i++) {
         inst->soundArray[i] = (ALSound *)((u8 *)inst->soundArray[i] +
@@ -111,9 +155,17 @@ void _bnkfPatchSound(ALSound *s, s32 offset, s32 table)
         return;
 
     s->flags = 1;
+#ifdef TARGET_S30
+    s30_swap32(s, 3); // envelope, keyMap, wavetable
+#endif
     
     s->envelope  = (ALEnvelope *)((u8 *)s->envelope + offset);
     s->keyMap    = (ALKeyMap *)((u8 *)s->keyMap + offset);
+#ifdef TARGET_S30
+    if (swap_once(s->envelope)) {
+        s30_swap32(s->envelope, 3); // the times; the volumes are bytes
+    }
+#endif
 
     s->wavetable = (ALWaveTable *)((u8 *)s->wavetable + offset);
     _bnkfPatchWaveTable(s->wavetable, offset, table);
@@ -125,6 +177,10 @@ void _bnkfPatchWaveTable(ALWaveTable *w, s32 offset, s32 table)
         return;
 
     w->flags = 1;
+#ifdef TARGET_S30
+    s30_swap32(w, 2); // base, len
+    s30_swap32(&w->waveInfo, w->type == AL_ADPCM_WAVE ? 2 : 1);
+#endif
     
     w->base += table;
 
@@ -134,10 +190,27 @@ void _bnkfPatchWaveTable(ALWaveTable *w, s32 offset, s32 table)
 	w->waveInfo.adpcmWave.book  = (ALADPCMBook *)((u8 *)w->waveInfo.adpcmWave.book + offset);
 	if (w->waveInfo.adpcmWave.loop)
 	    w->waveInfo.adpcmWave.loop = (ALADPCMloop *)((u8 *)w->waveInfo.adpcmWave.loop + offset);
+#ifdef TARGET_S30
+	if (swap_once(w->waveInfo.adpcmWave.book)) {
+	    ALADPCMBook *book = w->waveInfo.adpcmWave.book;
+
+	    s30_swap32(book, 2);
+	    s30_swap16(book->book, book->order * book->npredictors * 8);
+	}
+	if (w->waveInfo.adpcmWave.loop && swap_once(w->waveInfo.adpcmWave.loop)) {
+	    s30_swap32(w->waveInfo.adpcmWave.loop, 3);
+	    s30_swap16(w->waveInfo.adpcmWave.loop->state, 16);
+	}
+#endif
     }
     else if (w->type == AL_RAW16_WAVE)
     {
 	if (w->waveInfo.rawWave.loop)
 	    w->waveInfo.rawWave.loop = (ALRawLoop *)((u8 *)w->waveInfo.rawWave.loop + offset);
+#ifdef TARGET_S30
+	if (w->waveInfo.rawWave.loop && swap_once(w->waveInfo.rawWave.loop)) {
+	    s30_swap32(w->waveInfo.rawWave.loop, 3);
+	}
+#endif
     }	
 }
