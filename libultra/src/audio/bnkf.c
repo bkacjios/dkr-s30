@@ -39,11 +39,12 @@ static  void _bnkfPatchWaveTable(ALWaveTable *w, s32 offset, s32 table);
  * envelopes, books and loops (shared between sounds) are remembered here.
  */
 #include "s30_swap.h"
+#include <stdlib.h>
 
-static void *sSwapped[1024];
-static s32 sNumSwapped;
+static void **sSwapped;
+static s32 sNumSwapped, sMaxSwapped;
 
-/* TRUE the first time p is seen */
+/* TRUE the first time p is seen (both bank files' structures, a few thousand) */
 static s32 swap_once(void *p) {
     s32 i;
 
@@ -52,9 +53,11 @@ static s32 swap_once(void *p) {
             return FALSE;
         }
     }
-    if (sNumSwapped < (s32) (sizeof(sSwapped) / sizeof(sSwapped[0]))) {
-        sSwapped[sNumSwapped++] = p;
+    if (sNumSwapped == sMaxSwapped) {
+        sMaxSwapped = sMaxSwapped ? sMaxSwapped * 2 : 1024;
+        sSwapped = realloc(sSwapped, sMaxSwapped * sizeof(*sSwapped));
     }
+    sSwapped[sNumSwapped++] = p;
     return TRUE;
 }
 #endif

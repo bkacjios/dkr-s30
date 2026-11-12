@@ -1,6 +1,8 @@
 #include "menu.h"
 #ifdef TARGET_S30
 #include "s30_swap.h"
+#include <stdio.h>
+const char* S30_Getenv(const char* name);
 #endif
 #include "asset_enums.h"
 #include "asset_loading.h"
@@ -2506,6 +2508,11 @@ void menu_init(u32 menuId) {
     s32 i;
 
     gCurrentMenuId = menuId;
+#ifdef TARGET_S30
+    if (S30_Getenv("MENUDBG")) {
+        printf("menu %u\n", menuId);
+    }
+#endif
     reset_controller_sticks();
     gIgnorePlayerInputTime = 1;
     gOptionBlinkTimer = 0;
@@ -3527,7 +3534,11 @@ s32 menu_title_screen_loop(s32 updateRate) {
         } else if (gTitleAudioCounter < 5.0f) {
             music_volume_set((s32) ((f32) sMenuMusicVolume * (gTitleAudioCounter - 4.0f)));
         } else {
+#ifdef TARGET_S30
+            music_volume_set((s8) sMenuMusicVolume); // the low byte: byte 3 on the N64
+#else
             music_volume_set(*((s8 *) &sMenuMusicVolume + 3));
+#endif
         }
     }
     if (gTitleRevealTimer == 0) {

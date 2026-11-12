@@ -10,6 +10,8 @@
  *                 beside the save)
  *
  *   DKR_STATS     RCP tasks and the thread on the CPU every 2 s (n64/src/os.c)
+ *   DKR_MENUDBG   each menu as it starts (src/menu.c menu_init), to follow a
+ *                 scripted host run (tools/s30/host_stubs.c DKR_HOSTPRESS)
  *
  * Crash reports also go to crash.log next to the binary (on the SD card;
  * stderr is the launcher's log in /tmp, lost on reboot). kill -QUIT prints
